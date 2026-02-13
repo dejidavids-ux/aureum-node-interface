@@ -2,42 +2,251 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
-    <title>PWA Application</title>
+    <title>Aureum Hash Systems</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; }
-        .container { text-align: center; padding: 50px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono&display=swap');
+        
+        :root { --gold: #c5a059; --bg: #050505; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg); 
+            color: #d1d1d1; 
+            margin: 0; 
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .gold-btn { 
+            background: linear-gradient(180deg, #d4af37 0%, #a67c00 100%); 
+            color: #000; 
+            font-weight: 700; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .gold-btn:active { transform: scale(0.97); filter: brightness(0.9); }
+        .system-card { 
+            background: #0f0f0f; 
+            border: 1px solid rgba(197, 160, 89, 0.15); 
+            border-radius: 20px; 
+        }
+        
+        /* Navigation */
+        .bottom-nav { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: rgba(10,10,10,0.98); backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(255,255,255,0.05); display: flex; 
+            justify-content: space-around; padding: 15px 0 30px; 
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: #444; font-weight: 700; letter-spacing: 0.05em; }
+        .nav-item.active { color: var(--gold); }
+
+        .view { display: none; height: 100vh; padding: 30px 20px; overflow-y: auto; }
+        .view.active { display: block; animation: viewIn 0.3s ease-out; }
+        
+        @keyframes viewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .bar { transition: height 0.5s ease; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to the PWA Application</h1>
-        <p>This is a Progressive Web App (PWA).</p>
-        <button id="installBtn" style="display: none;">Install App</button>
+
+    <!-- Security Gateway -->
+    <div id="authScreen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-10">
+        <div class="w-24 h-24 mb-8 flex items-center justify-center rounded-3xl bg-yellow-950/10 border border-yellow-900/30">
+            <i class="fa-solid fa-fingerprint text-5xl text-[#c5a059]"></i>
+        </div>
+        <h1 class="text-2xl font-bold tracking-[0.4em] text-white mb-2">AUREUM</h1>
+        <p class="text-[9px] text-zinc-600 uppercase tracking-[0.6em] mb-12">Encryption Layer Active</p>
+        
+        <div class="w-full max-w-xs space-y-4">
+            <input type="password" id="passKey" placeholder="NODE AUTH KEY" 
+                class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-2xl p-6 text-center text-white mono tracking-widest focus:border-yellow-600/40 outline-none">
+            <button onclick="unlockApp()" class="gold-btn w-full py-5 rounded-2xl text-xs uppercase tracking-[0.2em]">Authorize</button>
+            <p id="errorHint" class="text-red-800 text-[10px] text-center uppercase tracking-widest opacity-0">Signature Rejected</p>
+        </div>
     </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="hidden">
+        
+        <!-- View: Compute Node -->
+        <div id="node-view" class="view active">
+            <div class="flex justify-between items-center mb-10 pt-4">
+                <div>
+                    <p class="text-[9px] text-zinc-500 uppercase font-bold tracking-widest mb-1">System Node</p>
+                    <p class="text-white font-bold mono text-lg">ALPHA-09-SHX</p>
+                </div>
+                <div class="px-4 py-1.5 rounded-full bg-green-950/20 border border-green-900/40">
+                    <span class="text-[9px] text-green-500 font-bold uppercase tracking-widest">● Secure</span>
+                </div>
+            </div>
+
+            <div class="system-card p-10 text-center mb-8 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#c5a059] to-transparent opacity-30"></div>
+                <p class="text-[10px] text-zinc-500 uppercase tracking-widest mb-4">Live Throughput</p>
+                <div class="text-6xl font-bold mono text-white mb-2 tracking-tighter"><span id="hrVal">0.00</span></div>
+                <p class="text-[11px] text-[#c5a059] font-bold uppercase tracking-widest">Petahash / Sec</p>
+                
+                <div class="mt-10 flex justify-center gap-2 h-16 items-end" id="visualizer">
+                    <!-- Dynamic Bars -->
+                </div>
+            </div>
+
+            <button onclick="toggleNode()" id="nodeBtn" class="gold-btn w-full py-6 rounded-3xl flex items-center justify-center gap-4 shadow-2xl">
+                <i class="fa-solid fa-power-off text-xl"></i>
+                <span class="text-sm tracking-[0.2em] uppercase">Initialize Node</span>
+            </button>
+
+            <div class="mt-8 p-6 rounded-2xl bg-[#080808] border border-zinc-900/50 h-40 overflow-hidden relative">
+                <div id="logBox" class="mono text-[10px] text-zinc-600 space-y-1.5 overflow-y-auto h-full">
+                    <p>> HANDSHAKE_INITIATED...</p>
+                    <p>> Waiting for user command...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- View: Treasury -->
+        <div id="vault-view" class="view">
+            <h2 class="text-2xl font-bold text-white mb-10 pt-4 uppercase tracking-widest">Treasury</h2>
+            <div class="system-card p-10 mb-10 border-l-4 border-l-[#c5a059]">
+                <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-2">Settled Assets</p>
+                <p class="text-4xl mono text-white font-bold" id="balVal">0.00000000</p>
+                <div class="mt-8 pt-8 border-t border-zinc-900 flex justify-between items-center">
+                    <span class="text-[10px] text-zinc-600 uppercase font-bold">Current Value</span>
+                    <span class="text-sm text-[#c5a059] font-bold mono">$48,291.44 <span class="text-[10px] ml-1">USD</span></span>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="px-1">
+                    <label class="text-[10px] text-zinc-600 uppercase font-bold tracking-widest block mb-4">Settlement Destination</label>
+                    <input type="text" id="btcAddr" placeholder="bc1q..." 
+                        class="w-full bg-[#0a0a0a] border border-zinc-800 rounded-2xl p-5 text-sm text-yellow-600 mono outline-none focus:border-yellow-600/20">
+                </div>
+                <button onclick="handleTransfer()" class="w-full py-5 border border-yellow-900/20 text-white rounded-2xl text-[10px] font-bold uppercase tracking-[0.3em] bg-zinc-900/50 active:bg-zinc-800">
+                    Confirm Transmission
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="nav('node-view', this)">
+                <i class="fa-solid fa-cube text-xl mb-1.5"></i>
+                <span>NODE</span>
+            </div>
+            <div class="nav-item" onclick="nav('vault-view', this)">
+                <i class="fa-solid fa-vault text-xl mb-1.5"></i>
+                <span>VAULT</span>
+            </div>
+        </nav>
+    </div>
+
     <script>
-        let deferredPrompt;
-        const installBtn = document.getElementById('installBtn');
+        const MASTER_KEY = "GOLDEN-MINER-2024";
+        let isRunning = false, balance = 0, nodeTimer;
 
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installBtn.style.display = 'block';
-        });
+        function haptic(ms = 40) { if (navigator.vibrate) navigator.vibrate(ms); }
 
-        installBtn.addEventListener('click', () => {
-            installBtn.style.display = 'none';
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-                if (choiceResult.outcome === 'accepted') {
-                    console.log('User accepted the A2HS prompt');
-                } else {
-                    console.log('User dismissed the A2HS prompt');
-                }
+        function unlockApp() {
+            const val = document.getElementById('passKey').value;
+            if(val === MASTER_KEY) {
+                haptic(100);
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('mainContent').classList.remove('hidden');
+                initVisualizer();
+                pushLog("SESSION_AUTHORIZED");
+            } else {
+                haptic([50, 50, 50]);
+                const hint = document.getElementById('errorHint');
+                hint.style.opacity = '1';
+                setTimeout(() => hint.style.opacity = '0', 2000);
+            }
+        }
+
+        function nav(id, el) {
+            haptic(20);
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        function toggleNode() {
+            haptic(60);
+            isRunning = !isRunning;
+            const btn = document.getElementById('nodeBtn');
+            if(isRunning) {
+                btn.innerHTML = '<i class="fa-solid fa-circle-stop"></i> <span class="text-sm tracking-[0.2em] uppercase">Shut Down Node</span>';
+                btn.classList.replace('gold-btn', 'bg-zinc-900');
+                btn.classList.add('text-zinc-600');
+                pushLog("SYNCING_NETWORK_HASH...");
+                nodeTimer = setInterval(() => {
+                    balance += (Math.random() * 0.0000008);
+                    document.getElementById('balVal').innerText = balance.toFixed(8);
+                    document.getElementById('hrVal').innerText = (831.25 + Math.random()*35).toFixed(2);
+                    updateBars();
+                    if(Math.random() > 0.9) pushLog(`SHARE_ACCEPTED_NODE_09`);
+                }, 1000);
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-power-off text-xl"></i> <span class="text-sm tracking-[0.2em] uppercase">Initialize Node</span>';
+                btn.classList.replace('bg-zinc-900', 'gold-btn');
+                btn.classList.remove('text-zinc-600');
+                clearInterval(nodeTimer);
+                document.getElementById('hrVal').innerText = "0.00";
+                pushLog("NODE_STANDBY_READY");
+                resetBars();
+            }
+        }
+
+        function initVisualizer() {
+            const viz = document.getElementById('visualizer');
+            for(let i=0; i<15; i++) {
+                const b = document.createElement('div');
+                b.className = 'bar w-2 bg-zinc-900 rounded-t-full';
+                b.style.height = '10%';
+                viz.appendChild(b);
+            }
+        }
+
+        function updateBars() {
+            document.querySelectorAll('.bar').forEach(b => {
+                const h = Math.floor(Math.random()*90) + 10;
+                b.style.height = h + '%';
+                b.style.backgroundColor = h > 60 ? '#c5a059' : '#1a1a1a';
             });
-            deferredPrompt = null;
-        });
+        }
+
+        function resetBars() {
+            document.querySelectorAll('.bar').forEach(b => {
+                b.style.height = '10%';
+                b.style.backgroundColor = '#1a1a1a';
+            });
+        }
+
+        function pushLog(msg) {
+            const log = document.getElementById('logBox');
+            const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            log.innerHTML += `<p><span class="text-zinc-800">[${time}]</span> <span class="text-zinc-400">></span> ${msg}</p>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function handleTransfer() {
+            const addr = document.getElementById('btcAddr').value;
+            if(addr.length < 25) {
+                haptic([100, 50, 100]);
+                alert("Protocol Error: Check wallet address checksum.");
+                return;
+            }
+            haptic(200);
+            pushLog(`TRANSFER_REQUEST: ${balance.toFixed(4)} BTC`);
+            alert("Settlement request broadcasted to treasury gateway.");
+        }
     </script>
 </body>
 </html>
